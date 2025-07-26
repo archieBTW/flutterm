@@ -197,13 +197,20 @@ class _HomeState extends State<Home> {
 
   late final Pty pty;
 
+  late final FocusNode _terminalFocusNode;
+
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.endOfFrame.then((_) {
+    _terminalFocusNode = FocusNode();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _terminalFocusNode.requestFocus();
       if (mounted) _startPty();
     });
+
+    FocusManager.instance.highlightStrategy =
+        FocusHighlightStrategy.alwaysTraditional;
   }
 
   void _startPty() {
@@ -231,6 +238,25 @@ class _HomeState extends State<Home> {
     };
   }
 
+  final terminalShortcuts = <ShortcutActivator, Intent>{
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyA):
+        const TerminalShortcutIntent('\x01'),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyE):
+        const TerminalShortcutIntent('\x05'),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyK):
+        const TerminalShortcutIntent('\x0b'),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyU):
+        const TerminalShortcutIntent('\x15'),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyW):
+        const TerminalShortcutIntent('\x17'),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyL):
+        const TerminalShortcutIntent('\x0c'),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyC):
+        const TerminalShortcutIntent('\x03'),
+    LogicalKeySet(LogicalKeyboardKey.control, LogicalKeyboardKey.keyD):
+        const TerminalShortcutIntent('\x04'),
+  };
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -241,98 +267,108 @@ class _HomeState extends State<Home> {
             children: [
               CustomTitleBar(),
               Expanded(
-                child: TerminalView(
-                  terminal,
-                  controller: terminalController,
-                  autofocus: true,
-                  // backgroundOpacity: 0.7,
-                  onSecondaryTapDown: (details, offset) async {
-                    final RenderBox overlay =
-                        Overlay.of(context).context.findRenderObject()
-                            as RenderBox;
-
-                    final selection = terminalController.selection;
-                    final selectedText = selection != null
-                        ? terminal.buffer.getText(selection)
-                        : null;
-
-                    final choice = await showMenu<String>(
-                      context: context,
-                      position: RelativeRect.fromRect(
-                        details.globalPosition & const Size(40, 40),
-                        Offset.zero & overlay.size,
-                      ),
-                      items: [
-                        if (selectedText != null)
-                          const PopupMenuItem<String>(
-                            value: 'cut',
-                            child: Text('Cut'),
-                          ),
-                        if (selectedText != null)
-                          const PopupMenuItem<String>(
-                            value: 'copy',
-                            child: Text('Copy'),
-                          ),
-                        const PopupMenuItem<String>(
-                          value: 'paste',
-                          child: Text('Paste'),
-                        ),
-                      ],
-                    );
-
-                    switch (choice) {
-                      case 'cut':
-                        if (selectedText != null) {
-                          await Clipboard.setData(
-                            ClipboardData(text: selectedText),
-                          );
-                          terminal.paste(''); // simulate cut (optional)
-                          terminalController.clearSelection();
-                        }
-                        break;
-                      case 'copy':
-                        if (selectedText != null) {
-                          await Clipboard.setData(
-                            ClipboardData(text: selectedText),
-                          );
-                          terminalController.clearSelection();
-                        }
-                        break;
-                      case 'paste':
-                        final data = await Clipboard.getData('text/plain');
-                        final text = data?.text;
-                        if (text != null) {
-                          terminal.paste(text);
-                        }
-                        break;
-                    }
+                child: Actions(
+                  actions: {
+                    TerminalShortcutIntent: SendTerminalSequenceAction((
+                      sequence,
+                    ) {
+                      pty.write(const Utf8Encoder().convert(sequence));
+                    }),
                   },
+                  child: TerminalView(
+                    terminal,
+                    controller: terminalController,
+                    autofocus: true,
+                    shortcuts: terminalShortcuts,
+                    // backgroundOpacity: 0.7,
+                    onSecondaryTapDown: (details, offset) async {
+                      final RenderBox overlay =
+                          Overlay.of(context).context.findRenderObject()
+                              as RenderBox;
 
-                  textStyle: TerminalStyle(fontSize: 18),
-                  theme: TerminalTheme(
-                    background: Color.fromARGB(255, 0, 0, 0),
-                    foreground: Color(0xFFcdd6f4),
-                    cursor: Color(0xFFf5e0dc),
-                    selection: Color(0xFF313244),
-                    black: Color(0xFF45475a),
-                    red: Color(0xFFf38ba8),
-                    green: Color(0xFFa6e3a1),
-                    yellow: Color(0xFFf9e2af),
-                    blue: Color(0xFF89b4fa),
-                    magenta: Color(0xFFf5c2e7),
-                    cyan: Color(0xFF94e2d5),
-                    white: Color(0xFFbac2de),
-                    brightBlack: Color(0xFF585b70),
-                    brightRed: Color(0xFFf38ba8),
-                    brightGreen: Color(0xFFa6e3a1),
-                    brightYellow: Color(0xFFf9e2af),
-                    brightBlue: Color(0xFF89b4fa),
-                    brightMagenta: Color(0xFFf5c2e7),
-                    brightCyan: Color(0xFF94e2d5),
-                    brightWhite: Color(0xFFa6adc8),
-                    searchHitBackground: Color(0xFF45475a),
-                    searchHitBackgroundCurrent: Color(0xFF89b4fa),
-                    searchHitForeground: Color(0xFFcdd6f4),
+                      final selection = terminalController.selection;
+                      final selectedText = selection != null
+                          ? terminal.buffer.getText(selection)
+                          : null;
+
+                      final choice = await showMenu<String>(
+                        context: context,
+                        position: RelativeRect.fromRect(
+                          details.globalPosition & const Size(40, 40),
+                          Offset.zero & overlay.size,
+                        ),
+                        items: [
+                          if (selectedText != null)
+                            const PopupMenuItem<String>(
+                              value: 'cut',
+                              child: Text('Cut'),
+                            ),
+                          if (selectedText != null)
+                            const PopupMenuItem<String>(
+                              value: 'copy',
+                              child: Text('Copy'),
+                            ),
+                          const PopupMenuItem<String>(
+                            value: 'paste',
+                            child: Text('Paste'),
+                          ),
+                        ],
+                      );
+
+                      switch (choice) {
+                        case 'cut':
+                          if (selectedText != null) {
+                            await Clipboard.setData(
+                              ClipboardData(text: selectedText),
+                            );
+                            terminal.paste(''); // simulate cut (optional)
+                            terminalController.clearSelection();
+                          }
+                          break;
+                        case 'copy':
+                          if (selectedText != null) {
+                            await Clipboard.setData(
+                              ClipboardData(text: selectedText),
+                            );
+                            terminalController.clearSelection();
+                          }
+                          break;
+                        case 'paste':
+                          final data = await Clipboard.getData('text/plain');
+                          final text = data?.text;
+                          if (text != null) {
+                            terminal.paste(text);
+                          }
+                          break;
+                      }
+                    },
+
+                    textStyle: TerminalStyle(fontSize: 18),
+                    theme: TerminalTheme(
+                      background: Color.fromARGB(255, 0, 0, 0),
+                      foreground: Color(0xFFcdd6f4),
+                      cursor: Color(0xFFf5e0dc),
+                      selection: const Color(0x80313244),
+                      black: Color(0xFF45475a),
+                      red: Color(0xFFf38ba8),
+                      green: Color(0xFFa6e3a1),
+                      yellow: Color(0xFFf9e2af),
+                      blue: Color(0xFF89b4fa),
+                      magenta: Color(0xFFf5c2e7),
+                      cyan: Color(0xFF94e2d5),
+                      white: Color(0xFFbac2de),
+                      brightBlack: Color(0xFF585b70),
+                      brightRed: Color(0xFFf38ba8),
+                      brightGreen: Color(0xFFa6e3a1),
+                      brightYellow: Color(0xFFf9e2af),
+                      brightBlue: Color(0xFF89b4fa),
+                      brightMagenta: Color(0xFFf5c2e7),
+                      brightCyan: Color(0xFF94e2d5),
+                      brightWhite: Color(0xFFa6adc8),
+                      searchHitBackground: Color(0xFF45475a),
+                      searchHitBackgroundCurrent: Color(0xFF89b4fa),
+                      searchHitForeground: Color(0xFFcdd6f4),
+                    ),
                   ),
                 ),
               ),
@@ -439,5 +475,22 @@ class _WindowButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class TerminalShortcutIntent extends Intent {
+  final String sequence;
+  const TerminalShortcutIntent(this.sequence);
+}
+
+class SendTerminalSequenceAction extends Action<TerminalShortcutIntent> {
+  final void Function(String sequence) send;
+
+  SendTerminalSequenceAction(this.send);
+
+  @override
+  Object? invoke(covariant TerminalShortcutIntent intent) {
+    send(intent.sequence);
+    return null;
   }
 }

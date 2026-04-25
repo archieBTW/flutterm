@@ -1,16 +1,36 @@
-# flutterm
+# Flutterm
 
-A new Flutter project.
+![Flutterm Screenshot](./flutterm_screenshot.png)
 
-## Getting Started
+Flutterm is a modern, beautiful terminal emulator built with Flutter. It combines a highly customizable UI with a robust native PTY backend.
 
-This project is a starting point for a Flutter application.
+## Features
 
-A few resources to get you started if this is your first Flutter project:
+- **Dynamic Tab Management:** Easily run multiple background terminal sessions in a tabbed environment.
+- **Power User Shortcuts:** Fully navigate without lifting your hands from the keyboard (`Ctrl+Shift+T` for new tab, `Ctrl+Shift+W` to close tab, `Ctrl+Tab` to cycle tabs, `Ctrl+Shift+C`/`V` for clipboard).
+- **Custom Fonts:** Searchable system fonts built-in, natively bundling high-quality developer fonts like JetBrains Mono and Fira Code for perfect coding ligatures.
+- **Customizable Appearance:** Real-time settings for Light/Dark mode, window dimensions, and typography.
+- **Process Protection:** Intelligent window and tab close confirmations when PTY processes are actively running.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Building
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+To build Flutterm from source, you must have the Flutter SDK installed on your Linux machine.
+
+```bash
+git clone https://github.com/yourusername/flutterm.git
+cd flutterm
+flutter pub get
+flutter build linux --release
+```
+
+## Installation
+
+Flutterm includes an installation script that automatically builds the application, moves it to your system binaries, and maps the desktop application and icons to your application launcher.
+
+```bash
+./install.sh
+```
+
+During installation, you will be prompted for `sudo` to securely register the executable to `/usr/local/bin` and update the `hicolor` system icon cache.
+
+After running the install script, simply search for **Flutterm** in your app launcher or type `flutterm` directly into your terminal!

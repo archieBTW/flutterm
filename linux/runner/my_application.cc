@@ -47,7 +47,7 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "flutterm");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  gtk_window_set_default_size(window, 700, 500);
   gtk_window_set_decorated(window, FALSE);
 
   gtk_widget_show(GTK_WIDGET(window));
